@@ -7,7 +7,8 @@ Created on Sun Feb 18 23:36:27 2018
 
 import numpy as np
 from collections import Counter
-
+from sympy import *
+from sympy.solvers import solve
 
 ##############################################################################
 
@@ -41,6 +42,7 @@ def get_dominant_strategy(payoff_matrix):
         print(*dominant_strategy_list)
 
 
+
 def get_nash(payoff1, payoff2):
     shape = payoff1.shape
     # create matrix to store count of being nash equilibrium/equilibria
@@ -60,6 +62,37 @@ def get_nash(payoff1, payoff2):
     nash_count = 2
     print("Nash equilibrium/equilibria: ")
     print([(index, row.index(nash_count)) for index, row in enumerate(nash_matrix) if nash_count in row])
+
+
+
+def get_mixed_nash(payoff):
+    row = payoff.shape[0]
+    col = payoff.shape[1]
+    
+    coefficient_list = [[0 for x in range(col - 1)] for y in range(row - 1)]
+    constant_list = [0 for y in range(row - 1)]
+    
+    # calculate coefficient for each strategy of Player 1 from expected utillity for each strategy of Player 2
+    # eg. E(Left) = E(Right)
+    # p1 = coefficient from strategy L minus R and the last strategy (1 - p1 - p2)
+    for i in range(0, col - 1):
+        for j in range(0, row - 1):
+            coe = payoff[i, j] - payoff[row - 1, j] - payoff[i, j + 1] + payoff[row - 1, j + 1]
+            coefficient_list[j][i] = coe
+        con = payoff[col - 1, i + 1] - payoff[col - 1, i] 
+        constant_list[i] = con
+    
+    coefficient_list = np.array(coefficient_list)
+    constant_list = np.array(constant_list)
+    prob_list = np.linalg.solve(coefficient_list, constant_list)
+    last_prob = 1
+    for prob in prob_list:
+        last_prob -= prob
+    
+    last_prob = np.array([last_prob])
+    prob_list = np.append(prob_list, last_prob)
+    print("Probability for Player 1")
+    print(prob_list)
     
 ##############################################################################
 # get input payoff matrix
@@ -83,8 +116,10 @@ def get_nash(payoff1, payoff2):
 #     
 # payoff2 = np.matrix(payoff)
 # =============================================================================
-payoff1 = np.matrix("3 2 2; 3 1 5")
-payoff2 = np.matrix("3 3 4; 1 3 0")
+random_list = np.random.randint(5, size=(3, 3))
+payoff1 = np.matrix(random_list)
+random_list = np.random.randint(5, size=(3, 3))
+payoff2 = np.matrix(random_list)
 ##############################################################################
 
 print("Player 1")
@@ -96,3 +131,5 @@ print()
 
 get_nash(payoff1, payoff2)
 print()
+
+get_mixed_nash(payoff2)
