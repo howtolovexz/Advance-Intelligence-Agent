@@ -7,8 +7,6 @@ Created on Sun Feb 18 23:36:27 2018
 
 import numpy as np
 from collections import Counter
-from sympy import *
-from sympy.solvers import solve
 
 ##############################################################################
 
@@ -34,12 +32,8 @@ def get_dominant_strategy(payoff_matrix):
             dominant_strategy_flag = 1
             dominant_strategy_list.append(i + 1)
             #print("Dominant Strategy is strategy: " + str(i + 1))
-            
-    if(dominant_strategy_flag == 0):
-        print("No Dominant Strategy for this player")
-    else:
-        print("Dominant Strategy is/are strategy: ")
-        print(*dominant_strategy_list)
+        
+    return dominant_strategy_list, dominant_strategy_flag
 
 
 
@@ -59,16 +53,87 @@ def get_nash(payoff1, payoff2):
     for winner_index in winner_index_list:
         nash_matrix[winner_index[0]][winner_index[1]] += 1
     
-    nash_count = 2
-    print("Nash equilibrium/equilibria: ")
-    print([(index, row.index(nash_count)) for index, row in enumerate(nash_matrix) if nash_count in row])
+    # check count in each strategy if equal to 2 means it is a pure Nash
+    pure_nash_list = []
+    for i in range(0, h):
+        for j in range(0, w):
+            if(nash_matrix[i][j] == 2):
+                pure_nash_list.append([i + 1, j + 1])
+
+    return pure_nash_list
 
 
-
+# =============================================================================
+# def get_mixed_nash(payoff):
+#     row = payoff.shape[0]
+#     col = payoff.shape[1]
+#     
+#     coefficient_list = [[0 for x in range(col - 1)] for y in range(row - 1)]
+#     constant_list = [0 for y in range(row - 1)]
+#     
+#     # calculate coefficient for each strategy of Player 1 from expected utillity for each strategy of Player 2
+#     # eg. E(Left) = E(Right)
+#     # p1 = coefficient from strategy L minus R and the last strategy (1 - p1 - p2)
+#     for i in range(0, col - 1):
+#         for j in range(0, row - 1):
+#             coe = payoff[i, j] - payoff[row - 1, j] - payoff[i, j + 1] + payoff[row - 1, j + 1]
+#             coefficient_list[j][i] = coe
+#         con = payoff[col - 1, i + 1] - payoff[col - 1, i] 
+#         constant_list[i] = con
+#     
+#     coefficient_list = np.array(coefficient_list)
+#     constant_list = np.array(constant_list)
+#     prob_list = np.linalg.solve(coefficient_list, constant_list)
+#     last_prob = 1
+#     for prob in prob_list:
+#         last_prob -= prob
+#     
+#     last_prob = np.array([last_prob])
+#     prob_list = np.append(prob_list, last_prob)
+#     print("Probability for Player 1")
+#     print(prob_list)
+# =============================================================================
+    
+# =============================================================================
+# def get_mixed_nash(payoff):
+#     row = payoff.shape[0]
+#     col = payoff.shape[1]
+#     
+#     coefficient_list = [[0 for x in range(1)] for y in range(1)]
+#     constant_list = [0 for y in range(1)]
+#     
+#     print(coefficient_list)
+#     print(constant_list)
+#     
+#     # calculate coefficient for each strategy of Player 1 from expected utillity for each strategy of Player 2
+#     # eg. E(Left) = E(Right)
+#     # p1 = coefficient from strategy L minus R and the last strategy (1 - p1 - p2)
+#     for i in range(0, 1):
+#         for j in range(0, 1):
+#             coe = payoff[i, j] - payoff[1, j] - payoff[i, j + 1] + payoff[1, j + 1]
+#             coefficient_list[j][i] = coe
+#         con = payoff[1, i + 1] - payoff[1, i] 
+#         constant_list[i] = con
+#     
+#     coefficient_list = np.array(coefficient_list)
+#     constant_list = np.array(constant_list)
+#     prob_list = np.linalg.solve(coefficient_list, constant_list)
+#     last_prob = 1
+#     for prob in prob_list:
+#         last_prob -= prob
+#     
+#     last_prob = np.array([last_prob])
+#     prob_list = np.append(prob_list, last_prob)
+#     print("Probability for Player 1")
+#     print(prob_list)
+# =============================================================================
+    
+    
 def get_mixed_nash(payoff):
     row = payoff.shape[0]
     col = payoff.shape[1]
     
+    strategy_list = [y + 1 for y in range(row)]
     coefficient_list = [[0 for x in range(col - 1)] for y in range(row - 1)]
     constant_list = [0 for y in range(row - 1)]
     
@@ -82,17 +147,39 @@ def get_mixed_nash(payoff):
         con = payoff[col - 1, i + 1] - payoff[col - 1, i] 
         constant_list[i] = con
     
+    if(np.linalg.det(coefficient_list) == 0):
+        print("Cannot find mixed Nash")
+        return [], []
+        
     coefficient_list = np.array(coefficient_list)
     constant_list = np.array(constant_list)
     prob_list = np.linalg.solve(coefficient_list, constant_list)
+    
     last_prob = 1
     for prob in prob_list:
         last_prob -= prob
     
     last_prob = np.array([last_prob])
     prob_list = np.append(prob_list, last_prob)
-    print("Probability for Player 1")
-    print(prob_list)
+    
+    # check for negative probability remove those strategies
+    count = 0
+    negative_prob_flag = 0
+    for prob in prob_list:
+        if(prob < 0):
+            payoff = np.delete(payoff, [count], axis=0)
+            payoff = np.delete(payoff, [col - 1], axis=1)
+            strategy_list.remove(count + 1)
+            prob_list[count] = 0
+            negative_prob_flag = 1
+        count += 1
+    
+    # if there are some negative probability recalculate probability without those strategies
+    if(negative_prob_flag == 1):
+        prob_list_new, strategy_list_new = get_mixed_nash(payoff)
+        prob_list = prob_list_new
+        
+    return prob_list, strategy_list
     
 ##############################################################################
 # get input payoff matrix
@@ -116,20 +203,49 @@ def get_mixed_nash(payoff):
 #     
 # payoff2 = np.matrix(payoff)
 # =============================================================================
-random_list = np.random.randint(5, size=(3, 3))
+##############################################################################
+    
+
+############################## Input Matrix ##################################
+random_list = np.random.randint(3, size=(3, 3))
 payoff1 = np.matrix(random_list)
-random_list = np.random.randint(5, size=(3, 3))
+random_list = np.random.randint(3, size=(3, 3))
 payoff2 = np.matrix(random_list)
+payoff2 = np.matrix("2 6 4; 12 3 5; 6 0 2")
+#payoff2 = np.matrix("0 3 4 5 6; 3 0 5 6 7; 4 5 0 7 8; 5 6 7 0 9; 6 7 8 9 0")
+#payoff2 = np.matrix("3 0 5 6; 4 5 0 7; 5 6 7 0; 6 7 8 9")
+payoff1 = np.matrix("5 5 3 3; 5 5 2 2; 4 4 4 4; 4 1 4 1")
+payoff2 = np.matrix("5 5 2 2; 5 5 3 3; 3 0 3 0; 3 2 3 2")
 ##############################################################################
 
+
+########################### Dominant Strategy ################################
+print("Dominant strategy")
 print("Player 1")
-get_dominant_strategy(payoff1)
-print()
+dominant_strategy_list, dominant_strategy_flag = get_dominant_strategy(payoff1)
+if(dominant_strategy_flag == 0):
+    print("No Dominant Strategy for this player")
+else:
+    print("Dominant Strategy is/are strategy: ")
+print(*dominant_strategy_list)
 print("Player 2")
-get_dominant_strategy(payoff2)
+dominant_strategy_list, dominant_strategy_flag = get_dominant_strategy(payoff2)
+if(dominant_strategy_flag == 0):
+    print("No Dominant Strategy for this player")
+else:
+    print("Dominant Strategy is/are strategy: ")
+print(*dominant_strategy_list)
 print()
+##############################################################################
 
-get_nash(payoff1, payoff2)
+########################## Pure Nash Equilibrium #############################
+print("Nash equilibrium/equilibria: ")
+print(get_nash(payoff1, payoff2))
 print()
+##############################################################################
 
-get_mixed_nash(payoff2)
+######################### Mixed Nash Equilibrium #############################
+prob_list, strategy_list = get_mixed_nash(payoff2)
+print("Mixed Nash Equilibrium strategies for Player 1: " + str(strategy_list))
+print("with probability: " + str(prob_list))
+##############################################################################
